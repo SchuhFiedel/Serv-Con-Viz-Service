@@ -1,0 +1,100 @@
+﻿@page "/counter"
+@using System.Text.Json;
+@using Recurop
+@inject RecurringOperationsManager Recurop
+
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+
+<PageTitle>TEST</PageTitle>
+
+<div id="graph" style="width:80%; height:80%;"></div>
+
+@code {
+    private IJSObjectReference? module;
+    private RecurringOperation? TimerOperation { get; set; }
+    GraphClass graphData = null;
+    Random rand;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            this.rand = new Random();
+
+            graphData = new GraphClass();
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/global.js");
+            string json = JsonSerializer.Serialize(graphData);
+            //Console.WriteLine(json);
+            await module.InvokeVoidAsync("GraphClass.constructor");
+            await module.InvokeVoidAsync("GraphClass.makeGraphFromJson", json);
+            //await module.InvokeVoidAsync("GraphClass.makeGraph");
+            TimerOperation = new("timer");
+            TimerOperation.Operation = Increment;
+
+            Recurop.StartRecurring(TimerOperation, TimeSpan.FromSeconds(3));
+        }
+    }
+
+    public void Increment()
+    {
+        int id = this.graphData.nodes.Count;
+        this.graphData.nodes.Add(new Node() { group = (id%2)+1, id = $"Test{id}"});
+        int nodeCount = this.graphData.nodes.Count;
+        int sourceId = rand.Next(nodeCount);
+        int? targetId = sourceId + 1 < nodeCount && sourceId + 1 > 0 ? sourceId + 1 : null;
+        if(targetId.HasValue && targetId.Value != sourceId)
+        {
+            var source = this.graphData.nodes[sourceId];
+            var target = this.graphData.nodes[targetId.Value];
+            this.graphData.links.Add(new Link() { source = source.id, target = target.id, value = rand.Next(5) });
+        }
+
+        string json = JsonSerializer.Serialize(graphData);
+
+        module.InvokeVoidAsync("GraphClass.makeGraphFromJson", json);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            await module.DisposeAsync();
+        }
+    }
+
+    public class GraphClass
+    {
+        public List<Node> nodes { get; set; } 
+        public List<Link> links { get; set; }
+
+        public GraphClass()
+        {
+            nodes = new()
+            {
+                new Node() { group = 1, id = "Test1" },
+                new Node() { group = 2, id = "Test2" }
+            };
+
+            links = new()
+            {
+                new Link() { source = nodes[0].id, target = nodes[1].id, value = 1 }
+            };
+        }
+    }
+
+    public class Node
+    {
+        public string id { get; set; }
+        public int group { get; set; } = 1;
+    }
+
+    public class Link
+    {
+        public string source { get; set; }
+        public string target { get; set; }
+        public int value { get; set; } = 1;
+    }
+}
