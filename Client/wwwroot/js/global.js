@@ -67,11 +67,14 @@ export class GraphClass {
 
         }
         else {
+            console.log(document.getElementById('graph').offsetHeight)
+            console.log(document.getElementById('graph').offsetWidth)
+
             this.Graph = ForceGraph()
                 (document.getElementById('graph'))
                 .linkDirectionalParticles(2)
 
-                .d3Force('center', null)
+                //.d3Force('center', null)
                 .d3Force('charge', null)
 
                 .graphData(dataObj)
@@ -99,13 +102,13 @@ export class GraphClass {
 
                     node.__bckgDimensions = bckgDimensions; // to re-use in nodePointerAreaPaint
                 })
-                
-                /*
+                .height("600")
+                .width("600")
                 .nodePointerAreaPaint((node, color, ctx) => {
                     ctx.fillStyle = color;
                     const bckgDimensions = node.__bckgDimensions;
                     bckgDimensions && ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2, ...bckgDimensions);
-                });*/
+                });
         }
     }
 }
